@@ -38,42 +38,31 @@ class Splitter(nn.Module):
 
         self.stems = nn.ModuleDict({name: UNet(in_channels=2) for name in stem_names})
 
-    def compute_stft(self, wav: Tensor) -> Tuple[Tensor, Tensor]:
+    def compute_stft(self, wav):
         """
         Computes stft feature from wav
+
         Args:
             wav (Tensor): B x L
         """
-        stft = torch.stft(
-            wav,
-            n_fft=self.win_length,
-            hop_length=self.hop_length,
-            window=self.win,
-            center=True,
-            return_complex=False,
-            pad_mode="constant",
-        )
+
+        stft = torch.stft(wav, n_fft=self.win_length, hop_length=self.hop_length, window=self.win,
+                          center=True, return_complex=True, pad_mode='constant')
 
         # only keep freqs smaller than self.F
-        stft = stft[:, : self.F, :, :]
-        real = stft[:, :, :, 0]
-        im = stft[:, :, :, 1]
-        mag = torch.sqrt(real**2 + im**2)
+        stft = stft[:, :self.F, :]
+        mag = stft.abs()
 
-        return stft, mag
+        return torch.view_as_real(stft), mag
 
-    def inverse_stft(self, stft: Tensor) -> Tensor:
+    def inverse_stft(self, stft):
         """Inverses stft to wave form"""
 
         pad = self.win_length // 2 + 1 - stft.size(1)
         stft = F.pad(stft, (0, 0, 0, 0, 0, pad))
-        wav = torch.istft(
-            stft,
-            self.win_length,
-            hop_length=self.hop_length,
-            center=True,
-            window=self.win,
-        )
+        stft = torch.view_as_complex(stft)
+        wav = torch.istft(stft, self.win_length, hop_length=self.hop_length, center=True,
+                    window=self.win)
         return wav.detach()
 
     def forward(self, wav: Tensor) -> Dict[str, Tensor]:
