@@ -50,7 +50,7 @@ def split(
     wav, _ = librosa.load(
         fpath_src,
         mono=False,
-        res_type="kaiser_fast",
+        # res_type="kaiser_fast",
         sr=sr,
         duration=duration,
         offset=offset,
